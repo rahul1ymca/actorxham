@@ -1,8 +1,8 @@
-# JavaScript Crawlee & CheerioCrawler Actor Template
+# Video Metadata Scraper Actor
 
 <!-- This is an Apify template readme -->
 
-This template example was built with [Crawlee](https://crawlee.dev/) to scrape data from a website using [Cheerio](https://cheerio.js.org/) wrapped into [CheerioCrawler](https://crawlee.dev/api/cheerio-crawler/class/CheerioCrawler).
+This Actor uses [Crawlee](https://crawlee.dev/) and [Cheerio](https://cheerio.js.org/) directly. It crawls a listing page, follows video links, and stores each video's title, description, page URL, and MP4 URL in the Apify Dataset. It does not use Firecrawl.
 
 ## Quick Start
 
@@ -41,10 +41,12 @@ For more information, see the [Actor definition](https://docs.apify.com/platform
 
 ## How it works
 
-This code is a JavaScript script that uses Cheerio to scrape data from a website. It then stores the website titles in a dataset.
+This JavaScript Actor uses Cheerio to scrape video metadata into a dataset.
 
-- The crawler starts with URLs provided from the input `startUrls` field defined by the input schema. Number of scraped pages is limited by `maxPagesPerCrawl` field from the input schema.
-- The crawler uses `requestHandler` for each URL to extract the data from the page with the Cheerio library and to save the title and URL of each page to the dataset. It also logs out each result that is being saved.
+- The crawler starts with URLs from `startUrls` and follows `a[data-role="thumb-link"]` or `a.video-thumb-info__name` links.
+- The primary title selector is `.video-thumb-info__name` with its `title` attribute.
+- On each detail page, the primary description selector is `.video-description`.
+- Each dataset item contains `title`, `videoUrl`, `description`, and `mp4Url`.
 
 ## What's included
 

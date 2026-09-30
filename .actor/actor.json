@@ -7,7 +7,7 @@
     "version": "0.0",
     "meta": {
         "templateId": "js-crawlee-cheerio",
-        "generatedBy": "<FILL-IN-MODEL>"
+        "generatedBy": "GitHub Copilot"
     },
     "inputSchema": "./input_schema.json",
     "outputSchema": "./output_schema.json",
