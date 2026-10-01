@@ -1,5 +1,5 @@
 // Crawlee - web scraping and browser automation library (Read more at https://crawlee.dev)
-import { CheerioCrawler } from '@crawlee/cheerio';
+import { PlaywrightCrawler } from '@crawlee/playwright';
 // Apify SDK - toolkit for building Apify Actors (Read more at https://docs.apify.com/sdk/js/)
 import { Actor } from 'apify';
 
@@ -22,7 +22,7 @@ Actor.on('aborting', async () => {
 // Disable it for short runs if you are sure your proxy configuration is correct
 const proxyConfiguration = await Actor.createProxyConfiguration({ checkAccess: true });
 
-const crawler = new CheerioCrawler({
+const crawler = new PlaywrightCrawler({
     proxyConfiguration,
     maxRequestsPerCrawl,
     requestHandler: router,

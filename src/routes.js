@@ -1,6 +1,6 @@
-import { createCheerioRouter } from '@crawlee/cheerio';
+import { createPlaywrightRouter } from '@crawlee/playwright';
 
-export const router = createCheerioRouter();
+export const router = createPlaywrightRouter();
 
 const toAbsoluteUrl = (value, pageUrl) => {
     if (typeof value !== 'string' || !value.trim()) return null;
@@ -12,88 +12,89 @@ const toAbsoluteUrl = (value, pageUrl) => {
     }
 };
 
-const extractInitials = ($) => {
-    for (const script of $('script').toArray()) {
-        const content = $(script).html() ?? '';
-        const assignment = content.match(/(?:window\.)?initials\s*=\s*/);
-        if (!assignment) continue;
-
-        const start = content.indexOf('{', assignment.index + assignment[0].length);
-        if (start < 0) continue;
-
-        let depth = 0;
-        let quote = false;
-        let escaped = false;
-        for (let index = start; index < content.length; index += 1) {
-            const character = content[index];
-            if (quote) {
-                if (escaped) escaped = false;
-                else if (character === '\\') escaped = true;
-                else if (character === '"') quote = false;
-                continue;
-            }
-            if (character === '"') quote = true;
-            else if (character === '{') depth += 1;
-            else if (character === '}' && --depth === 0) {
-                try {
-                    return JSON.parse(content.slice(start, index + 1));
-                } catch {
-                    break;
-                }
-            }
-        }
-    }
-
-    return null;
-};
-
 const firstString = (...values) => values.find((value) => typeof value === 'string' && value.trim())?.trim() || null;
 
-const extractMp4Url = ($, pageUrl) => {
-    const model = extractInitials($)?.videoModel;
-    const modelSources = model?.sources;
-    const candidates = [
-        modelSources?.mp4,
-        modelSources?.standard,
-        modelSources?.hls,
-        $('video source[src$=".mp4" i]').first().attr('src'),
-        $('video[src$=".mp4" i]').first().attr('src'),
-        $('[data-video-url*=".mp4" i]').first().attr('data-video-url'),
-        $('[data-src*=".mp4" i]').first().attr('data-src'),
-        $('meta[property="og:video:secure_url"]').attr('content'),
-        $('meta[property="og:video:url"]').attr('content'),
-        $('meta[property="og:video"]').attr('content'),
-    ];
+const confirmAgeGate = async (page, log) => {
+    const pageText = (
+        await page
+            .locator('body')
+            .innerText()
+            .catch(() => '')
+    ).toLowerCase();
+    if (!/\b(?:18\+|18 years|age verification|verify your age|are you 18)\b/.test(pageText)) return false;
 
-    for (const candidate of candidates) {
-        const url = toAbsoluteUrl(candidate, pageUrl);
-        if (url?.toLowerCase().includes('.mp4')) return url;
+    const confirmation = page
+        .getByRole('button', {
+            name: /(?:i am|yes,? i am|enter|continue).*(?:18|adult)|(?:18|adult).*(?:enter|continue)/i,
+        })
+        .first();
+    if (await confirmation.isVisible().catch(() => false)) {
+        await confirmation.click();
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        log.info('Confirmed visible age gate');
+        return true;
     }
 
-    const match = $.html().match(/https?:\/\/[^"'\s]+\.mp4(?:\?[^"'\s]*)?/i);
-    return toAbsoluteUrl(match?.[0], pageUrl);
+    const linkConfirmation = page
+        .getByRole('link', {
+            name: /(?:i am|yes,? i am|enter|continue).*(?:18|adult)|(?:18|adult).*(?:enter|continue)/i,
+        })
+        .first();
+    if (await linkConfirmation.isVisible().catch(() => false)) {
+        await linkConfirmation.click();
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        log.info('Confirmed visible age gate');
+        return true;
+    }
+
+    log.warning('Age verification page detected, but no normal confirmation control was found');
+    return false;
 };
 
-router.addDefaultHandler(async ({ enqueueLinks, request, $, log }) => {
-    log.info('Enqueueing video detail pages', { url: request.loadedUrl });
-    const urls = [];
-    $('a.video-thumb__title, a.video-thumb__image-container, a[data-role="thumb-link"], a.video-thumb-info__name').each(
-        (_, element) => {
-            const href = $(element).attr('href');
-            const title =
-                $(element).find('.video-thumb-info__name, .video-thumb__title').attr('title') ||
-                $(element).attr('title') ||
-                $(element).text();
+const extractVideoData = async (page) =>
+    page.evaluate(() => {
+        const model = window.initials?.videoModel;
+        const meta = (selector, attribute = 'content') => document.querySelector(selector)?.getAttribute(attribute);
+        const text = (selector) => document.querySelector(selector)?.textContent?.trim();
 
-            if (href) urls.push({ url: href, userData: { title: title?.trim() || null } });
-        },
-    );
+        return {
+            title: text('h1') || meta('meta[property="og:title"]'),
+            description: text('.video-description') || meta('meta[name="description"]'),
+            thumbnailUrl: meta('meta[property="og:image"]') || model?.thumbnail,
+            mp4Url:
+                model?.sources?.mp4 ||
+                model?.sources?.standard ||
+                model?.sources?.hls ||
+                document.querySelector('video source')?.src ||
+                document.querySelector('video')?.src ||
+                meta('meta[property="og:video:secure_url"]') ||
+                meta('meta[property="og:video:url"]') ||
+                meta('meta[property="og:video"]'),
+            duration: model?.duration ?? null,
+            quality: model?.sources?.types ?? null,
+        };
+    });
 
-    const titlesByUrl = new Map(
-        urls.map(({ url, userData }) => [new URL(url, request.loadedUrl ?? request.url).href, userData]),
+router.addDefaultHandler(async ({ page, enqueueLinks, request, log }) => {
+    await page.waitForLoadState('domcontentloaded');
+    await confirmAgeGate(page, log);
+    const videos = await page.$$eval(
+        'a.video-thumb__title, a.video-thumb__image-container, a[data-role="thumb-link"], a.video-thumb-info__name',
+        (elements) =>
+            elements.map((element) => ({
+                url: element.href,
+                title:
+                    element.querySelector('.video-thumb-info__name, .video-thumb__title')?.getAttribute('title') ||
+                    element.getAttribute('title') ||
+                    element.textContent?.trim() ||
+                    null,
+            })),
     );
+    const titlesByUrl = new Map(videos.map(({ url, title }) => [url, { title }]));
+
+    log.info('Enqueueing video detail pages', { url: request.loadedUrl ?? request.url, count: videos.length });
     await enqueueLinks({
-        urls: urls.map(({ url }) => url),
+        urls: videos.map(({ url }) => url),
         label: 'DETAIL',
         transformRequestFunction: (requestOptions) => ({
             ...requestOptions,
@@ -101,37 +102,26 @@ router.addDefaultHandler(async ({ enqueueLinks, request, $, log }) => {
             userData: titlesByUrl.get(requestOptions.url),
         }),
     });
-
-    await enqueueLinks({
-        selector: 'a.pager__item[data-page], a[rel="next"]',
-    });
+    await enqueueLinks({ selector: 'a.pager__item[data-page], a[rel="next"]' });
 });
 
-router.addHandler('DETAIL', async ({ request, $, log, pushData }) => {
-    const videoUrl = request.loadedUrl ?? request.url;
-    const model = extractInitials($)?.videoModel;
-    const title = firstString(
-        $('h1').first().text(),
-        $('meta[property="og:title"]').attr('content'),
-        request.userData?.title,
-    );
-    const description = firstString(
-        $('.video-description').first().text(),
-        $('meta[name="description"]').attr('content'),
-        $('[class*="description" i]').first().text(),
-    );
-    const thumbnailUrl = toAbsoluteUrl($('meta[property="og:image"]').attr('content') || model?.thumbnail, videoUrl);
-    const mp4Url = extractMp4Url($, videoUrl);
-    const quality = model?.sources?.types ?? null;
+router.addHandler('DETAIL', async ({ page, request, log, pushData }) => {
+    await page.waitForLoadState('domcontentloaded');
+    await confirmAgeGate(page, log);
+    await page.waitForTimeout(500);
 
-    log.info('Saving video metadata', { title, videoUrl, hasMp4Url: Boolean(mp4Url) });
+    const videoUrl = request.loadedUrl ?? request.url;
+    const extracted = await extractVideoData(page);
+    const title = firstString(extracted.title, request.userData?.title);
+
+    log.info('Saving video metadata', { title, videoUrl, hasMp4Url: Boolean(extracted.mp4Url) });
     await pushData({
         title,
         videoUrl,
-        description,
-        thumbnailUrl,
-        mp4Url,
-        duration: model?.duration ?? null,
-        quality,
+        description: firstString(extracted.description),
+        thumbnailUrl: toAbsoluteUrl(extracted.thumbnailUrl, videoUrl),
+        mp4Url: toAbsoluteUrl(extracted.mp4Url, videoUrl),
+        duration: extracted.duration,
+        quality: extracted.quality,
     });
 });

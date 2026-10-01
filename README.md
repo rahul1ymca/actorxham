@@ -2,7 +2,7 @@
 
 <!-- This is an Apify template readme -->
 
-This Actor uses [Crawlee](https://crawlee.dev/) and [Cheerio](https://cheerio.js.org/) directly. It crawls listing pages, follows video links and pagination, and stores each video's title, description, thumbnail, page URL, duration, available qualities, and MP4 URL in the Apify Dataset. It does not use Firecrawl or execute page JavaScript.
+This Actor uses [Crawlee](https://crawlee.dev/) and Playwright directly. It opens pages in a real Chromium browser, executes page JavaScript, follows video links and pagination, and stores each video's title, description, thumbnail, page URL, duration, available qualities, and MP4 URL in the Apify Dataset. It does not use Firecrawl.
 
 ## Quick Start
 
@@ -44,9 +44,10 @@ For more information, see the [Actor definition](https://docs.apify.com/platform
 This JavaScript Actor uses Cheerio to scrape video metadata into a dataset.
 
 - The crawler starts with URLs from `startUrls`, follows video links (`.video-thumb__title`, `.video-thumb__image-container`, and legacy selectors), and enqueues `a.pager__item[data-page]`/`a[rel="next"]` pagination links.
-- On each detail page it reads stable `h1`, Open Graph/meta tags, and the JSON assigned to `window.initials` when that data is embedded in the HTML.
+- On each detail page it reads stable `h1`, Open Graph/meta tags, and the live `window.initials` object after page JavaScript has executed.
+- If a normal age-confirmation page is shown, it can click a visible “I am 18+”, “Enter”, or equivalent confirmation control. It does not bypass CAPTCHA, identity checks, or bot protection.
 - Each dataset item contains `title`, `videoUrl`, `description`, `thumbnailUrl`, `mp4Url`, `duration`, and `quality`.
-- Because this Actor uses Cheerio, data rendered only after client-side JavaScript runs (including a runtime-only `window.initials`) cannot be extracted without switching to Playwright.
+- Playwright is heavier than Cheerio but can extract data rendered only after client-side JavaScript runs.
 
 ## What's included
 
