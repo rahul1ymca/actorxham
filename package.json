@@ -7,8 +7,10 @@
         "node": ">=22"
     },
     "dependencies": {
+        "@crawlee/cheerio": "^3.15.3",
+        "@crawlee/playwright": "^3.18.2",
         "apify": "^3.7.0",
-        "@crawlee/cheerio": "^3.15.3"
+        "playwright": "^1.63.0"
     },
     "devDependencies": {
         "@apify/eslint-config": "^2.0.0",

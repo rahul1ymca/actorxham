@@ -1,12 +1,20 @@
 {
     "$schema": "https://apify.com/schemas/v1/dataset.ide.json",
     "actorSpecification": 1,
-    "fields": {},
+    "fields": {
+        "title": { "label": "Video title", "type": "string" },
+        "videoUrl": { "label": "Video URL", "type": "string" },
+        "description": { "label": "Description", "type": "string" },
+        "thumbnailUrl": { "label": "Thumbnail URL", "type": "string" },
+        "mp4Url": { "label": "MP4 URL", "type": "string" },
+        "duration": { "label": "Duration", "type": "number" },
+        "quality": { "label": "Available qualities", "type": "object" }
+    },
     "views": {
         "overview": {
             "title": "Overview",
             "transformation": {
-                "fields": ["title", "url"]
+                "fields": ["title", "videoUrl", "description", "thumbnailUrl", "mp4Url", "duration", "quality"]
             },
             "display": {
                 "component": "table",
@@ -15,9 +23,29 @@
                         "label": "Title",
                         "format": "text"
                     },
-                    "url": {
-                        "label": "URL",
+                    "videoUrl": {
+                        "label": "Video URL",
                         "format": "link"
+                    },
+                    "description": {
+                        "label": "Description",
+                        "format": "text"
+                    },
+                    "thumbnailUrl": {
+                        "label": "Thumbnail",
+                        "format": "link"
+                    },
+                    "mp4Url": {
+                        "label": "MP4 URL",
+                        "format": "link"
+                    },
+                    "duration": {
+                        "label": "Duration",
+                        "format": "number"
+                    },
+                    "quality": {
+                        "label": "Qualities",
+                        "format": "text"
                     }
                 }
             }

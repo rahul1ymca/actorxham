@@ -1,5 +1,5 @@
 // Crawlee - web scraping and browser automation library (Read more at https://crawlee.dev)
-import { CheerioCrawler } from '@crawlee/cheerio';
+import { PlaywrightCrawler } from '@crawlee/playwright';
 // Apify SDK - toolkit for building Apify Actors (Read more at https://docs.apify.com/sdk/js/)
 import { Actor } from 'apify';
 
@@ -11,14 +11,18 @@ import { router } from './routes.js';
 await Actor.init();
 
 // Structure of input is defined in input_schema.json
-const { startUrls = ['https://apify.com'], maxRequestsPerCrawl = 100 } = (await Actor.getInput()) ?? {};
+const { startUrls = ['https://xhamster19.com/'], maxRequestsPerCrawl = 100 } = (await Actor.getInput()) ?? {};
+
+Actor.on('aborting', async () => {
+    await Actor.exit();
+});
 
 // Proxy configuration to rotate IP addresses and prevent blocking (https://docs.apify.com/platform/proxy)
 // `checkAccess` flag ensures the proxy credentials are valid, but the check can take a few hundred milliseconds.
 // Disable it for short runs if you are sure your proxy configuration is correct
 const proxyConfiguration = await Actor.createProxyConfiguration({ checkAccess: true });
 
-const crawler = new CheerioCrawler({
+const crawler = new PlaywrightCrawler({
     proxyConfiguration,
     maxRequestsPerCrawl,
     requestHandler: router,

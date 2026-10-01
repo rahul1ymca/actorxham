@@ -1,8 +1,8 @@
-# JavaScript Crawlee & CheerioCrawler Actor Template
+# Video Metadata Scraper Actor
 
 <!-- This is an Apify template readme -->
 
-This template example was built with [Crawlee](https://crawlee.dev/) to scrape data from a website using [Cheerio](https://cheerio.js.org/) wrapped into [CheerioCrawler](https://crawlee.dev/api/cheerio-crawler/class/CheerioCrawler).
+This Actor uses [Crawlee](https://crawlee.dev/) and Playwright directly. It opens pages in a real Chromium browser, executes page JavaScript, follows video links and pagination, and stores each video's title, description, thumbnail, page URL, duration, available qualities, and MP4 URL in the Apify Dataset. It does not use Firecrawl.
 
 ## Quick Start
 
@@ -41,10 +41,13 @@ For more information, see the [Actor definition](https://docs.apify.com/platform
 
 ## How it works
 
-This code is a JavaScript script that uses Cheerio to scrape data from a website. It then stores the website titles in a dataset.
+This JavaScript Actor uses Cheerio to scrape video metadata into a dataset.
 
-- The crawler starts with URLs provided from the input `startUrls` field defined by the input schema. Number of scraped pages is limited by `maxPagesPerCrawl` field from the input schema.
-- The crawler uses `requestHandler` for each URL to extract the data from the page with the Cheerio library and to save the title and URL of each page to the dataset. It also logs out each result that is being saved.
+- The crawler starts with URLs from `startUrls`, follows video links (`.video-thumb__title`, `.video-thumb__image-container`, and legacy selectors), and enqueues `a.pager__item[data-page]`/`a[rel="next"]` pagination links.
+- On each detail page it reads stable `h1`, Open Graph/meta tags, and the live `window.initials` object after page JavaScript has executed.
+- If a normal age-confirmation page is shown, it can click a visible “I am 18+”, “Enter”, or equivalent confirmation control. It does not bypass CAPTCHA, identity checks, or bot protection.
+- Each dataset item contains `title`, `videoUrl`, `description`, `thumbnailUrl`, `mp4Url`, `duration`, and `quality`.
+- Playwright is heavier than Cheerio but can extract data rendered only after client-side JavaScript runs.
 
 ## What's included
 
@@ -68,7 +71,6 @@ This code is a JavaScript script that uses Cheerio to scrape data from a website
 ## Creating Actors with templates
 
 [How to create Apify Actors with web scraping code templates](https://www.youtube.com/watch?v=u-i-Korzf8w)
-
 
 ## Getting started
 

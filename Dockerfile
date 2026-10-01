@@ -1,10 +1,10 @@
 # Specify the base Docker image. You can read more about
 # the available images at https://docs.apify.com/sdk/js/docs/guides/docker-images
 # You can also use any other image from Docker Hub.
-FROM apify/actor-node:24
+FROM apify/actor-node-playwright-chrome:24
 
 # Check preinstalled packages
-RUN npm ls @crawlee/core apify puppeteer playwright
+RUN npm ls @crawlee/core apify playwright
 
 # Copy just package.json and package-lock.json
 # to speed up the build using Docker layer cache.
