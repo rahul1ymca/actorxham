@@ -2,7 +2,7 @@
 
 <!-- This is an Apify template readme -->
 
-This Actor uses [Crawlee](https://crawlee.dev/) and [Cheerio](https://cheerio.js.org/) directly. It crawls a listing page, follows video links, and stores each video's title, description, page URL, and MP4 URL in the Apify Dataset. It does not use Firecrawl.
+This Actor uses [Crawlee](https://crawlee.dev/) and [Cheerio](https://cheerio.js.org/) directly. It crawls listing pages, follows video links and pagination, and stores each video's title, description, thumbnail, page URL, duration, available qualities, and MP4 URL in the Apify Dataset. It does not use Firecrawl or execute page JavaScript.
 
 ## Quick Start
 
@@ -43,10 +43,10 @@ For more information, see the [Actor definition](https://docs.apify.com/platform
 
 This JavaScript Actor uses Cheerio to scrape video metadata into a dataset.
 
-- The crawler starts with URLs from `startUrls` and follows `a[data-role="thumb-link"]` or `a.video-thumb-info__name` links.
-- The primary title selector is `.video-thumb-info__name` with its `title` attribute.
-- On each detail page, the primary description selector is `.video-description`.
-- Each dataset item contains `title`, `videoUrl`, `description`, and `mp4Url`.
+- The crawler starts with URLs from `startUrls`, follows video links (`.video-thumb__title`, `.video-thumb__image-container`, and legacy selectors), and enqueues `a.pager__item[data-page]`/`a[rel="next"]` pagination links.
+- On each detail page it reads stable `h1`, Open Graph/meta tags, and the JSON assigned to `window.initials` when that data is embedded in the HTML.
+- Each dataset item contains `title`, `videoUrl`, `description`, `thumbnailUrl`, `mp4Url`, `duration`, and `quality`.
+- Because this Actor uses Cheerio, data rendered only after client-side JavaScript runs (including a runtime-only `window.initials`) cannot be extracted without switching to Playwright.
 
 ## What's included
 
@@ -70,7 +70,6 @@ This JavaScript Actor uses Cheerio to scrape video metadata into a dataset.
 ## Creating Actors with templates
 
 [How to create Apify Actors with web scraping code templates](https://www.youtube.com/watch?v=u-i-Korzf8w)
-
 
 ## Getting started
 

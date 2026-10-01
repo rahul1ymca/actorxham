@@ -1,0 +1,65 @@
+Apify Actor बनाने के लिए आपको एक "Deep Scraping" आर्किटेक्चर की ज़रूरत होगी। इसमें एक्टर पहले लिस्ट पेज (Category/Home) से वीडियो के लिंक्स इकट्ठा करता है और फिर हर लिंक पर जाकर उसका पूरा डेटा (MP4, Description, आदि) निकालता है।
+
+यहाँ आपके एक्टर के लिए पूरी जानकारी (Technical Context) दी गई है:
+
+1. Actor Configuration (बेसिक्स)
+Base Image: apify/actor-node-playwright-chrome (Playwright सबसे अच्छा है क्योंकि यह Headless Chrome का उपयोग करके window ऑब्जेक्ट्स को आसानी से पढ़ सकता है)।
+Proxy: Residential Proxy अनिवार्य है (xHamster पर Datacenter proxies अक्सर ब्लॉक हो जाती हैं)।
+---
+2. Step 1: List Page Scraper (लिंक्स इकट्ठा करने के लिए)
+जब एक्टर किसी कैटेगरी पेज पर होगा, तो उसे इन सिलेक्टर्स का उपयोग करके वीडियो लिंक्स को अपनी Queue में डालना होगा।
+
+Video Container: .thumb-list__item या .video-thumb
+Detail Page Link Selector: a.video-thumb__image-container या .video-thumb__title
+Pagination (अगले पेज के लिए): a.pager__item[data-page]
+Logic:
+
+js
+
+const links = await page.$$eval('.thumb-list__item a.video-thumb__title', (els) => 
+    els.map(el => el.href)
+);
+await crawler.addRequests(links);
+Use code snippets with caution
+
+---
+3. Step 2: Detail Page Scraper (डेटा एक्सट्रैक्शन के लिए)
+यह मुख्य हिस्सा है जहाँ आप एक वीडियो के अंदर का डेटा निकालते हैं।
+
+Video Title:
+Selector: h1
+Code: document.querySelector('h1')?.innerText.trim()
+Thumbnail:
+Selector: meta[property="og:image"]
+Code: document.querySelector('meta[property="og:image"]')?.content
+Description:
+Selector: .video-description या meta[name="description"]
+Code: document.querySelector('meta[name="description"]')?.content
+MP4/Stream URL (सबसे महत्वपूर्ण): ये साइटें सीधे .mp4 नहीं दिखातीं। आपको पेज के अंदर मौजूद initials डेटा को पार्स करना होगा।
+Source: window.initials (यह एक JSON ऑब्जेक्ट है)।
+Logic:
+javascript
+
+const videoData = await page.evaluate(() => {
+    const model = window.initials?.videoModel;
+    return {
+        mp4_link: model?.sources?.mp4 || model?.sources?.standard || model?.sources?.hls,
+        duration: model?.duration,
+        quality: model?.sources?.types
+    };
+});
+Use code snippets with caution
+
+---
+4. Actor का पूरा Flow (Summary for Development)
+Input: एक्टर को एक startUrl (जैसे https://xhamster.com/best) दें।
+Request Queue: एक्टर startUrl पर जाएगा और .thumb-list__item से सभी वीडियो लिंक्स को enqueue करेगा।
+Data Extraction:
+हर वीडियो पेज पर page.waitForSelector('h1') का इंतज़ार करें।
+page.evaluate() चलाकर window.initials से वीडियो का असली URL और Meta tags से बाकी जानकारी निकालें।
+Output: डेटा को Apify Dataset में pushData() के जरिए सेव करें।
+---
+सावधानियां:
+Anti-Scraping: एक्टर में Stealth मोड ऑन रखें।
+Lazy Loading: थंबनेल निकालने के लिए कभी-कभी पेज को थोड़ा स्क्रॉल करना पड़ सकता है।
+Dynamic Class Names: xHamster कभी-कभी क्लास नेम्स (जैसे .h1-fda7e) बदलता रहता है, इसलिए हमेशा h1 या meta टैग्स जैसे स्टेबल सिलेक्टर्स का उपयोग करें।

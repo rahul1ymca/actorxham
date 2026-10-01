@@ -5,13 +5,16 @@
         "title": { "label": "Video title", "type": "string" },
         "videoUrl": { "label": "Video URL", "type": "string" },
         "description": { "label": "Description", "type": "string" },
-        "mp4Url": { "label": "MP4 URL", "type": "string" }
+        "thumbnailUrl": { "label": "Thumbnail URL", "type": "string" },
+        "mp4Url": { "label": "MP4 URL", "type": "string" },
+        "duration": { "label": "Duration", "type": "number" },
+        "quality": { "label": "Available qualities", "type": "object" }
     },
     "views": {
         "overview": {
             "title": "Overview",
             "transformation": {
-                "fields": ["title", "videoUrl", "description", "mp4Url"]
+                "fields": ["title", "videoUrl", "description", "thumbnailUrl", "mp4Url", "duration", "quality"]
             },
             "display": {
                 "component": "table",
@@ -28,9 +31,21 @@
                         "label": "Description",
                         "format": "text"
                     },
+                    "thumbnailUrl": {
+                        "label": "Thumbnail",
+                        "format": "link"
+                    },
                     "mp4Url": {
                         "label": "MP4 URL",
                         "format": "link"
+                    },
+                    "duration": {
+                        "label": "Duration",
+                        "format": "number"
+                    },
+                    "quality": {
+                        "label": "Qualities",
+                        "format": "text"
                     }
                 }
             }
